@@ -1,0 +1,62 @@
+Type,Time(%),Time,Calls,Avg,Min,Max,Name
+"GPU activities",50.48%,9.7661ms,8,1.2208ms,525.12us,1.3737ms,[CUDA memcpy HtoD]
+,47.21%,9.1325ms,10,913.25us,2.0160us,1.2755ms,[CUDA memcpy DtoH]
+,0.69%,132.57us,1,132.57us,132.57us,132.57us,main_27_gpu
+,0.62%,120.13us,1,120.13us,120.13us,120.13us,main_44_gpu
+,0.52%,99.679us,1,99.679us,99.679us,99.679us,main_27_gpu__red
+,0.47%,91.231us,1,91.231us,91.231us,91.231us,main_44_gpu__red
+,0.02%,3.2640us,2,1.6320us,1.4400us,1.8240us,[CUDA memset]
+"API calls",80.37%,210.30ms,1,210.30ms,210.30ms,210.30ms,cuDevicePrimaryCtxRetain
+,9.66%,25.270ms,1,25.270ms,25.270ms,25.270ms,cuMemHostAlloc
+,4.71%,12.312ms,5,2.4623ms,3.6390us,11.378ms,cuMemAlloc
+,2.55%,6.6685ms,22,303.11us,1.2620us,1.2866ms,cuEventSynchronize
+,2.16%,5.6432ms,6,940.53us,205.40us,1.3355ms,cuStreamSynchronize
+,0.30%,787.19us,1,787.19us,787.19us,787.19us,cuMemAllocHost
+,0.12%,311.03us,1,311.03us,311.03us,311.03us,cuModuleLoadDataEx
+,0.04%,97.173us,8,12.146us,8.5160us,22.302us,cuMemcpyHtoDAsync
+,0.02%,59.229us,24,2.4670us,1.4920us,5.0970us,cuEventRecord
+,0.02%,56.885us,4,14.221us,5.1810us,23.907us,cuLaunchKernel
+,0.02%,54.179us,10,5.4170us,2.9970us,6.8970us,cuMemcpyDtoHAsync
+,0.01%,21.262us,2,10.631us,10.188us,11.074us,cuMemsetD32Async
+,0.01%,16.505us,4,4.1260us,2.9240us,6.5100us,cuPointerGetAttributes
+,0.01%,16.352us,4,4.0880us,1.1300us,6.6530us,cuDeviceGetPCIBusId
+,0.00%,12.428us,22,564ns,421ns,1.5040us,cuDeviceGetAttribute
+,0.00%,8.6210us,1,8.6210us,8.6210us,8.6210us,cuCtxGetCurrent
+,0.00%,7.3240us,5,1.4640us,518ns,2.5140us,cuEventCreate
+,0.00%,5.0240us,8,628ns,397ns,1.8100us,cuDeviceGet
+,0.00%,3.5030us,3,1.1670us,610ns,2.1820us,cuDeviceGetCount
+,0.00%,2.5150us,4,628ns,295ns,1.4030us,cuModuleGetFunction
+,0.00%,2.0130us,4,503ns,413ns,734ns,cuDeviceComputeCapability
+,0.00%,1.6590us,3,553ns,396ns,826ns,cuDriverGetVersion
+,0.00%,1.4920us,3,497ns,225ns,783ns,cuCtxSetCurrent
+"OpenACC (excl)",48.29%,41.449ms,1,41.449ms,41.449ms,41.449ms,acc_enter_data@sinus1.c:24
+,21.26%,18.246ms,1,18.246ms,18.246ms,18.246ms,acc_exit_data@sinus1.c:24
+,9.01%,7.7341ms,1,7.7341ms,7.7341ms,7.7341ms,acc_enter_data@sinus1.c:41
+,6.80%,5.8370ms,1,5.8370ms,5.8370ms,5.8370ms,acc_exit_data@sinus1.c:41
+,5.50%,4.7235ms,1,4.7235ms,4.7235ms,4.7235ms,acc_wait@sinus1.c:30
+,4.71%,4.0405ms,1,4.0405ms,4.0405ms,4.0405ms,acc_wait@sinus1.c:47
+,1.56%,1.3371ms,1,1.3371ms,1.3371ms,1.3371ms,acc_wait@sinus1.c:41
+,1.54%,1.3234ms,1,1.3234ms,1.3234ms,1.3234ms,acc_wait@sinus1.c:24
+,0.40%,341.32us,1,341.32us,341.32us,341.32us,acc_device_init@sinus1.c:24
+,0.26%,227.19us,1,227.19us,227.19us,227.19us,acc_wait@sinus1.c:27
+,0.24%,206.22us,1,206.22us,206.22us,206.22us,acc_wait@sinus1.c:44
+,0.11%,96.071us,5,19.214us,12.469us,39.946us,acc_enqueue_upload@sinus1.c:24 (arr)
+,0.06%,48.000us,3,16.000us,12.354us,20.544us,acc_enqueue_upload@sinus1.c:41 (brr)
+,0.05%,46.878us,5,9.3750us,6.5730us,11.135us,acc_enqueue_download@sinus1.c:30 (arr)
+,0.03%,28.713us,1,28.713us,28.713us,28.713us,acc_enqueue_launch@sinus1.c:27 (main_27_gpu)
+,0.03%,27.208us,1,27.208us,27.208us,27.208us,acc_enqueue_launch@sinus1.c:44 (main_44_gpu)
+,0.03%,26.693us,3,8.8970us,5.3710us,10.797us,acc_enqueue_download@sinus1.c:47 (brr)
+,0.02%,21.001us,1,21.001us,21.001us,21.001us,acc_enqueue_download@sinus1.c:30 (ans)
+,0.02%,15.225us,1,15.225us,15.225us,15.225us,acc_compute_construct@sinus1.c:26
+,0.02%,13.342us,1,13.342us,13.342us,13.342us,acc_enqueue_upload@sinus1.c:24 (ans)
+,0.02%,12.933us,1,12.933us,12.933us,12.933us,acc_enqueue_upload@sinus1.c:41 (ans1)
+,0.01%,10.045us,1,10.045us,10.045us,10.045us,acc_enqueue_download@sinus1.c:47 (ans1)
+,0.01%,6.7170us,1,6.7170us,6.7170us,6.7170us,acc_enqueue_launch@sinus1.c:44 (main_44_gpu__red)
+,0.01%,6.5620us,1,6.5620us,6.5620us,6.5620us,acc_enqueue_launch@sinus1.c:27 (main_27_gpu__red)
+,0.00%,3.4590us,1,3.4590us,3.4590us,3.4590us,acc_compute_construct@sinus1.c:43
+,0.00%,0ns,2,0ns,0ns,0ns,acc_create@sinus1.c:41
+,0.00%,0ns,2,0ns,0ns,0ns,acc_alloc@sinus1.c:24
+,0.00%,0ns,2,0ns,0ns,0ns,acc_create@sinus1.c:24
+,0.00%,0ns,2,0ns,0ns,0ns,acc_delete@sinus1.c:30
+,0.00%,0ns,2,0ns,0ns,0ns,acc_delete@sinus1.c:47
+,0.00%,0ns,1,0ns,0ns,0ns,acc_alloc@sinus1.c:41
