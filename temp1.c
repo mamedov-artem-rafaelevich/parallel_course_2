@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
+//#include <nvToolsExt.h>
 
 float ndegree(float d, int i)
 {
@@ -55,6 +56,15 @@ int main(int argc, char** argv)
 			else if(argv[k][1]=='n')
 				n=atoi(argv[k+1]);
 		}
+		nvtxDomainHandle_t domain = nvtxDomainCreateA("my domain");
+		nvtxEventAttributes_t eventAttrib = {0};
+		eventAttrib.version = NVTX_VERSION;
+		eventAttrib.size = NVTX_EVENT_ATTRIB_STRUCT_SIZE;
+		eventAttrib.messageType = NVTX_MESSAGE_TYPE_ASCII;
+		eventAttrib.message.ascii = "my range";
+		nvtxRangeId_t rangeId = nvtxDomainRangeStartEx(&eventAttrib);
+		// ...
+		nvtxDomainRangeEnd(rangeId);
 		float* setka = (float*)calloc(s*s,sizeof(float));
 		float* arr = (float*)calloc(s*s,sizeof(float));
 		setka[0]=10;
@@ -85,8 +95,8 @@ int main(int argc, char** argv)
 			if(iter%100==0 || iter==1)
 				printf("%d %f \n",iter, err);
 		}
-#pragma acc end data
+#pragma acc exit data delete(arr[:s*s]) delete (setka[:s*s])
 	free(setka);
 	}
-//	return 0;
+	return 0;
 }
