@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
@@ -32,7 +31,7 @@ int main(int argc, char** argv)
 		setka[s*s-1]=20;
 		int iter=0;
 		float err=0;
-		while(err<a && iter<n)
+		while(err>a && iter<n)
 		{
 			iter++;
 			err=0;
