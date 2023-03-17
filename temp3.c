@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
-#include <nvToolsExt.h>
 
 int main(int argc, char** argv)
 {
@@ -32,19 +31,14 @@ int main(int argc, char** argv)
 		setka[s*s-1]=20;
 		int iter=0;
 		float err=0;
-#pragma acc data copyin(setka[0:s*s]) create(arr[0:s*s]) copy(s,iter,err)
-		nvtxRangePushA("while loop");
 		while(err<a && iter<n)
 		{
 			iter++;
 			err=0;
-#pragma acc parallel loop
 			for(int i=0; i<s*s; i++)
 			{
-#pragma acc atomic update
 				arr[i]=setka[i];
 			}
-#pragma acc parallel loop
 			for(int i=1; i<s-1; i++)
 				for(int j=1; j<s-1; j++)
 				{
@@ -55,8 +49,6 @@ int main(int argc, char** argv)
 			if(iter%100==0 || iter==1)
 				printf("%d %f \n",iter, err);
 		}
-		nvtxRangePop();
-#pragma acc exit data delete(arr[:s*s]) delete (setka[:s*s])
 	free(setka);
 	}
 	return 0;
