@@ -21,6 +21,11 @@ __device__ void init(int s, int i, float l1, float l2)
 	setka[s*(s-1)+i]+=setka[s*(s-1)+i]+l1;
 }
 
+__device__ void deliter(float* setka, float* arr, float* err, int i)
+{
+	err[IDX2C(i+thread.x)]=setka[IDX2C(i+thread.x)]-arr[IDX2C(i+thread.x)];
+}
+
 int main(int argc, char** argv)
 {
 	float a=0;
@@ -48,6 +53,8 @@ int main(int argc, char** argv)
 		cudaMalloc((void**)setka,s*s*sizeof(float));
 		float* arr;
 		cudaMalloc((void**)arr,s*s*sizeof(float));
+		float* errors;
+		cudaMalloc((void**)errors,s*s*sizeof(float));
 		setka[0]=10;
 		setka[s-1]=20;
 		setka[(s-1)*s]=30;
@@ -84,6 +91,11 @@ int main(int argc, char** argv)
 					change<<<2,32>>>(setka,arr,i,j,s);
 				}
 			}
+			for(int i=0; i<s*s; i+=32
+				deliter<<<2,32>>>(setka,arr,errors,i);
+			for(int i=0; i<s*s; i++)
+				if(err<errors[i])
+					err=errors[i];
 			//
 			if(iter%100==0 || iter==1)
 				printf("%d %f \n",iter, err);
