@@ -730,6 +730,11 @@ int main(int argc, char** argv)
 		l2/=s;
 		int iter=0;
 		float err=1;
+//�������� ���� ���������, ����������� ������ � CPU �� GPU
+// copy(s,iter,err,a,n)
+		printf("%d %d %f %f %d\n",s,iter,err,a,n);
+//#pragma acc data present(arr,setka)
+//		#pragma acc parallel loop
 		for(int i=1; i<s-1; i++)
 		{
 			setka[i]=setka[i-1]+l1;
@@ -737,7 +742,7 @@ int main(int argc, char** argv)
 			setka[s-1+i*s]+=setka[s-1+(i-1)*s]+l1;
 			setka[s*(s-1)+i]+=setka[s*(s-1)+i-1]+l1;
 		}
-		if(s<16)
+		if(s<20)
 		{
 			for(int i=0; i<s; i++)
 			{
@@ -747,11 +752,7 @@ int main(int argc, char** argv)
 			
 			}
 		}
-//�������� ���� ���������, ����������� ������ � CPU �� GPU
-#pragma acc enter data copyin(setka[0:s*s],err,iter) create(arr[0:s*s])
-// copy(s,iter,err,a,n)
-//		printf("%d %d %f %f %d\n",s,iter,err,a,n);
-//		#pragma acc parallel loop
+#pragma acc enter data copyin(setka[0:s*s],iter,err,arr[0:s*s])
 		while(err>a && iter<n)
 		{
 //���������� ������, ������������� ���������� ��������. �������� ���������� �� GPU  � ����������� �� CPU
@@ -759,25 +760,18 @@ int main(int argc, char** argv)
 //#pragma acc update host(err,iter)
 //			{
 			iter++;
-//			if(iter%100==0)
-				err=0;
-/*			if(iter==1)
+			err=0;
+			if(iter==1)
 			{
 				float* dop;
 				dop = arr;
 				arr=setka;
 				setka = dop;
-			}*/
-//#pragma acc update device(err)
-#pragma acc update host(err)
-//			}
-//#pragma acc update host(err,iter)
-//#pragma acc loop
-			//  gang vector vector_length()
-//#pragma acc kernels
-//����������� �������
-/*#pragma acc loop
-			{
+			}
+#pragma acc update device(iter,err)
+#pragma acc update host(iter,err)
+//#pragma acc update devi
+/*			{
 			for(int i=0; i<s*s; i++)
 			{
 				arr[i]=setka[i];
@@ -792,7 +786,8 @@ int main(int argc, char** argv)
 //#pragma acc parallel loop reduction(max:err)
 // loop gang vector(s*s)
 //#pragma acc loop gang worker vector
-//#pragma acc loop independent reduction(+:arr)
+#pragma acc data present(arr[0:s*s],setka[0:s*s])
+#pragma acc parallel loop independent collapse(2) vector vector_length(64) gang num_gangs(64)
 //#pragma acc loop gang vector collapse(2)
 //#pragma acc loop gang
 //{
@@ -802,8 +797,7 @@ int main(int argc, char** argv)
 //#pragma acc parallel loop num_workers(4) vector_length(32)
 //#pragma acc parallel loop num_gangs(64)
 // num_workers(128) vector_length(128)
-#pragma acc data present(arr, setka, err)
-#pragma acc parallel loop independent collapse(2) vector vector_length(256) gang num_gangs(256) reduction(max:err) 
+//#pragma acc data present(arr, setka)
 //#pragma acc parallel loop gang worker num_workers(4) vector_length(128)
 //#pragma acc parallel loop
 //#pragma acc routine(setka) seq
@@ -832,27 +826,29 @@ int main(int argc, char** argv)
 //#pragma acc update host(err)
 //#pragma acc atomic update
 //#pragma acc wait
-					err=fmax(err,setka[IDX2C(i,j,s)]-arr[IDX2C(i,j,s)]);
 //}
 //���������� ������
 //#pragma acc update device(err)
 				}
 			}
+//			#pragma acc data present(err)
+			#pragma acc parallel loop reduction(max:err)
+			for(int i=s+1; i<s*(s-1); i++)
+				if(!(i%s==0 || i%s==s-1))
+					err=fmax(err,setka[i]-arr[i]);
+			#pragma acc update host(err)
+			#pragma acc update device(err)
 			float* dop;
 			dop = arr;
 			arr=setka;
 			setka = dop;
 //}
 			if(iter%100==0 || iter==1)
-			{
-			#pragma acc update host(err) 
-//			#pragma acc wait(1)
 				printf("%d %f \n",iter, err);
-			}
 		}
 		printf("Count iterations: %d\nError: %.10f\n", iter,err);
 //�������� ������ � GPU
-#pragma acc exit data delete(arr[:s*s]) delete (setka[:s*s])
+#pragma acc exit data delete(arr[:s*s],setka[:s*s])
 		if(s<20)
 			for(int i=0; i<s; i++)
 			{
