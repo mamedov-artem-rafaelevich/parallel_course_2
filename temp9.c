@@ -736,6 +736,10 @@ int main(int argc, char** argv)
 			setka[i*s]+=setka[(i-1)*s]+l2;
 			setka[s-1+i*s]+=setka[s-1+(i-1)*s]+l1;
 			setka[s*(s-1)+i]+=setka[s*(s-1)+i-1]+l1;
+			arr[i]=setka[i];
+			arr[i*s]=setka[i*s];
+			arr[s-1+i*s]=setka[s-1+i*s];
+			arr[s*(s-1)+i]=setka[s*(s-1)+i];
 		}
 		if(s<16)
 		{
@@ -748,7 +752,8 @@ int main(int argc, char** argv)
 			}
 		}
 //�������� ���� ���������, ����������� ������ � CPU �� GPU
-#pragma acc enter data copyin(setka[0:s*s],err,iter) create(arr[0:s*s])
+#pragma acc data copy(setka[0:s*s],arr[0:s*s]) copyin(err,iter)
+{
 // copy(s,iter,err,a,n)
 //		printf("%d %d %f %f %d\n",s,iter,err,a,n);
 //		#pragma acc parallel loop
@@ -760,7 +765,10 @@ int main(int argc, char** argv)
 //			{
 			iter++;
 //			if(iter%100==0)
+#pragma acc kernels
+{
 				err=0;
+}
 /*			if(iter==1)
 			{
 				float* dop;
@@ -769,7 +777,7 @@ int main(int argc, char** argv)
 				setka = dop;
 			}*/
 //#pragma acc update device(err)
-#pragma acc update host(err)
+//#pragma acc update host(err)
 //			}
 //#pragma acc update host(err,iter)
 //#pragma acc loop
@@ -802,11 +810,11 @@ int main(int argc, char** argv)
 //#pragma acc parallel loop num_workers(4) vector_length(32)
 //#pragma acc parallel loop num_gangs(64)
 // num_workers(128) vector_length(128)
-#pragma acc data present(arr, setka, err)
-#pragma acc parallel loop independent collapse(2) vector vector_length(256) gang num_gangs(256) reduction(max:err) 
 //#pragma acc parallel loop gang worker num_workers(4) vector_length(128)
 //#pragma acc parallel loop
 //#pragma acc routine(setka) seq
+#pragma acc data present(arr, setka)
+#pragma acc parallel loop independent collapse(2) vector vector_length(256) gang num_gangs(256) reduction(max:err) 
 			for(int i=1; i<s-1; i++)
 			{
 //#pragma acc loop reduction(max:err)
@@ -825,14 +833,14 @@ int main(int argc, char** argv)
 //#pragma acc update host(setka[i+j*s])
 //#pragma acc atomic write
 //#pragma acc routine gang
-					setka[IDX2C(i,j,s)]=0.25*(arr[IDX2C(i,j-1,s)]+arr[IDX2C(i,j+1,s)]+arr[IDX2C(i-1,j,s)]+arr[IDX2C(i+1,j,s)]);
+					arr[IDX2C(i,j,s)]=0.25*(setka[IDX2C(i,j-1,s)]+setka[IDX2C(i,j+1,s)]+setka[IDX2C(i-1,j,s)]+setka[IDX2C(i+1,j,s)]);
 //#pragma acc wait
 //#pragma acc kernels
 //{
 //#pragma acc update host(err)
 //#pragma acc atomic update
 //#pragma acc wait
-					err=fmax(err,setka[IDX2C(i,j,s)]-arr[IDX2C(i,j,s)]);
+					err=fmax(err,fabs(arr[IDX2C(i,j,s)]-setka[IDX2C(i,j,s)]));
 //}
 //���������� ������
 //#pragma acc update device(err)
@@ -849,10 +857,20 @@ int main(int argc, char** argv)
 //			#pragma acc wait(1)
 				printf("%d %f \n",iter, err);
 			}
+			#pragma acc kernels
+{
+				printf("%f \n", err);
+			for(int i=0; i<s; i++)
+			{
+				for(int j=0; j<s; j++)
+					printf("%f ",arr[i+s*j]);
+				printf("\n");
+			}
+}
 		}
 		printf("Count iterations: %d\nError: %.10f\n", iter,err);
 //�������� ������ � GPU
-#pragma acc exit data delete(arr[:s*s]) delete (setka[:s*s])
+}//#pragma acc exit data delete(arr[:s*s]) delete (setka[:s*s])
 		if(s<20)
 			for(int i=0; i<s; i++)
 			{
