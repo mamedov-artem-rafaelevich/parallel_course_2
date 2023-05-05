@@ -107,7 +107,8 @@ int main(int argc, char** argv)
     while(err>a && iter<n)
     {
       iter++;
-      err=0;
+      if(iter%100==1)
+        err=0;
       change<<<blocksPerGrid, threadsPerBlock >>>(cusetka, cuarr, n);
       change<<<blocksPerGrid, threadsPerBlock >>>(cuarr, cusetka, n);
       if(iter%100==1)
@@ -121,11 +122,8 @@ int main(int argc, char** argv)
         int max_value;
         void* d_temp_storage = nullptr;
         size_t temp_storage_bytes = 0;
-        cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes, arr2, &max_value, n);
+        DeviceReduce::Max(d_temp_storage, temp_storage_bytes, arr2, &max_value, n);
 
-        cudaMalloc(&d_temp_storage, temp_storage_bytes);
-        cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes, arr2, &max_value, n);
-        cudaFree(d_temp_storage);
         err=max_value;
         printf("%d %f\n", iter, err);
       }
@@ -139,6 +137,7 @@ int main(int argc, char** argv)
     cudaMemcpy(arr, cuarr, s*s*sizeof(float), cudaMemcpyDeviceToHost);
     cudaFree(cusetka);
     cudaFree(cuarr);
+    printf("Count iterations: %d\nError: %.10f\n", iter,err);
     if(s<16)
     {
       for(int i=0; i<s; i++)
