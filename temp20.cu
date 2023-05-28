@@ -7,15 +7,14 @@
 #include <cub/block/block_reduce.cuh>
 #define IDX2F(i,j,ld) (((j)-1)*(ld))+((i)-1)
 #define IDX2C(i,j,ld) (((j)*(ld))+(i))
-
+//Функция для вычисления теплопроводности по пятиточечному шаблону
 __global__ void change(float* setka, float* arr, int s)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i > s && i%s != 0 && i < s*(s - 1)-1 && i%s != s - 1)
 		setka[i] = 0.25 * (arr[i-1] + arr[i+1] + arr[i+s] + arr[i-s]);
-//	setka[IDX2C(i+threadIdx.x,j+threadIdx.y,s)]=0.25*(arr[IDX2C(i+threadIdx.x,j-1+threadIdx.y,s)]+arr[IDX2C(i+threadIdx.x,j+1+threadIdx.y,s)]+arr[IDX2C(i-1+threadIdx.x,j+threadIdx.y,s)]+arr[IDX2C(i+1+threadIdx.x,j+threadIdx.y,s)]);
 }
-
+//Функция для вычисления разницы между итерациями
 __global__ void subtract_modulo_kernel(float* d_in1, float* d_in2, float* d_out, int size) {
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
     if (idx < size*size) {
@@ -39,6 +38,7 @@ int main(int argc, char** argv)
   }
   else
   {
+    //Парсинг командной строки
     for(int k=1; k<argc; k+=2)
     {
       if(argv[k][1]=='a')
@@ -48,7 +48,7 @@ int main(int argc, char** argv)
       else if(argv[k][1]=='n')
         n=atoi(argv[k+1]);
     }
-
+//Инициализация
     float* setka = (float*)calloc(s*s,sizeof(float));
     float* arr = (float*)calloc(s*s,sizeof(float));
     float* arr2 = (float*)calloc(s*s,sizeof(float));
@@ -74,7 +74,7 @@ int main(int argc, char** argv)
     for(int i=1; i<s-1; i++)
     {
       setka[i]=setka[i-1]+l1;
-      setka[i*s]+=setka[(i-1)*s]+l2;
+      setka[i*s]+=setka[(i-1)*s]+l1;
       setka[s-1+i*s]+=setka[s-1+(i-1)*s]+l1;
       setka[s*(s-1)+i]+=setka[s*(s-1)+i-1]+l1;
       arr[i]=setka[i];
@@ -82,7 +82,7 @@ int main(int argc, char** argv)
       arr[s-1+i*s]=setka[s-1+i*s];
       arr[s*(s-1)+i]=setka[s*(s-1)+i];
     }
-
+//Визуализация сеток, меньших, чем 16
     if(s<16)
     {
       for(int i=0; i<s; i++)
@@ -102,6 +102,7 @@ int main(int argc, char** argv)
     void* d_temp_storage = NULL;
     size_t temp_storage_bytes = 0;
     float* max_value;
+    //Выделение памяти на видеокарте
     stat=cudaMalloc((void**)&cusetka, s*s*sizeof(float));
     if(stat!=cudaSuccess)printf("err 1: %d", stat);
     stat=cudaMalloc((void**)&cuarr2, s*s*sizeof(float));
@@ -116,11 +117,13 @@ int main(int argc, char** argv)
     if(stat!=cudaSuccess)printf("err 5: %d", stat);
     stat=cudaMalloc((void**)&max_value, sizeof(float));
     if(stat!=cudaSuccess)printf("err 6: %d", stat);
+    //Инициализация cub::DeviceReduce::Max
     stat=cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes, cuarr2, max_value, s*s);
     if(stat!=cudaSuccess)printf("err 7: %d", stat);
     stat=cudaMalloc(&d_temp_storage,temp_storage_bytes);
     if(stat!=cudaSuccess)printf("err 8: %d", stat);
     float* max_value_h=(float*)malloc(sizeof(float));
+    //Основной цикл
     while(err>a && iter<n)
     {
       iter++;
@@ -129,46 +132,26 @@ int main(int argc, char** argv)
         //Этого должно хватить для вычисления массива.
       cudaGraph_t graph;
       cudaGraphExec_t instance;
-//      cudaStreamBeginCapture(stream,cudaStreamCaptureModeGlobal);
+//Вычисление слоя
       change<<<s, s, 0 >>>(cusetka, cuarr, s);
-//      cudaStreamEndCapture(stream, &graph);
-//      cudaGraphInstantiate(&instance,graph,NULL,NULL,0);
-//      change<<<blocksPerGrid, threadsPerBlock >>>(cuarr, cusetka, n);
       if(iter%100==1)
       {
+        //Вычисление слоя с ошибкой
         subtract_modulo_kernel<<<s, s, 0>>>(cusetka, cuarr, cuarr2, s);
-        // cudaMemcpy(setka,cuarr2,s*s*sizeof(float),cudaMemcpyDeviceToHost);
-        // if(s<16)
-        // {
-        //   for(int i=0; i<s; i++)
-        //   {
-        //     for(int j=0; j<s; j++)
-        //       printf("%f ",setka[i+s*j]);
-        //     printf("\n");
-          
-        //   }
-        // }
-        // const int block_size = 256;
-        // const int num_blocks = (n + block_size - 1) / block_size;
-
-//        cudaDeviceSynchronize();
-
+//Вычисление ошибки
         stat=cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes, cuarr2, max_value, s*s);
         if(stat!=cudaSuccess)printf("%d\n",stat);
         cudaMemcpy(max_value_h,max_value,sizeof(float),cudaMemcpyDeviceToHost);
         err=max_value_h[0];
         printf("%d %f\n", iter, err);
       }
-
+//Копирование
       float* dop;
       dop = cuarr;
       cuarr=cusetka;
       cusetka = dop;
-      // cudaMemcpy(cuarr2,cuarr,s*s*sizeof(float),cudaMemcpyDeviceToDevice);
-      // cudaMemcpy(cuarr,cusetka,s*s*sizeof(float),cudaMemcpyDeviceToDevice);
-      // cudaMemcpy(cusetka,cuarr2,s*s*sizeof(float),cudaMemcpyDeviceToDevice);
-      //std::swap(cuarr,cusetka);
     }
+    //Возвращение данныз на хост
     cudaMemcpy(setka,cusetka,s*s*sizeof(float),cudaMemcpyDeviceToHost);
     cudaMemcpy(arr, cuarr, s*s*sizeof(float), cudaMemcpyDeviceToHost);
     free(max_value_h);
