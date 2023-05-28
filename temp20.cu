@@ -93,7 +93,7 @@ int main(int argc, char** argv)
       
       }
     }
-    cudaSetDevice(3);
+  //  cudaSetDevice(3);
     float *cusetka;
     float *cuarr;
     float* cuarr2;
@@ -160,13 +160,14 @@ int main(int argc, char** argv)
         printf("%d %f\n", iter, err);
       }
 
-      // float* dop;
-      // dop = cuarr;
-      // cuarr=cusetka;
-      // cusetka = dop;
-      cudaMemcpy(cuarr2,cuarr,s*s*sizeof(float),cudaMemcpyDeviceToDevice);
-      cudaMemcpy(cuarr,cusetka,s*s*sizeof(float),cudaMemcpyDeviceToDevice);
-      cudaMemcpy(cusetka,cuarr2,s*s*sizeof(float),cudaMemcpyDeviceToDevice);
+      float* dop;
+      dop = cuarr;
+      cuarr=cusetka;
+      cusetka = dop;
+      // cudaMemcpy(cuarr2,cuarr,s*s*sizeof(float),cudaMemcpyDeviceToDevice);
+      // cudaMemcpy(cuarr,cusetka,s*s*sizeof(float),cudaMemcpyDeviceToDevice);
+      // cudaMemcpy(cusetka,cuarr2,s*s*sizeof(float),cudaMemcpyDeviceToDevice);
+      //std::swap(cuarr,cusetka);
     }
     cudaMemcpy(setka,cusetka,s*s*sizeof(float),cudaMemcpyDeviceToHost);
     cudaMemcpy(arr, cuarr, s*s*sizeof(float), cudaMemcpyDeviceToHost);
