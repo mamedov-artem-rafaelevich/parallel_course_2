@@ -8,17 +8,17 @@
 #define IDX2F(i,j,ld) (((j)-1)*(ld))+((i)-1)
 #define IDX2C(i,j,ld) (((j)*(ld))+(i))
 //Функция для вычисления теплопроводности по пятиточечному шаблону
-__global__ void change(float* setka, float* arr, int s)
+__global__ void change(double* setka, double* arr, int s)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i > s && i%s != 0 && i < s*(s - 1)-1 && i%s != s - 1)
 		setka[i] = 0.25 * (arr[i-1] + arr[i+1] + arr[i+s] + arr[i-s]);
 }
 //Функция для вычисления разницы между итерациями
-__global__ void subtract_modulo_kernel(float* d_in1, float* d_in2, float* d_out, int size) {
+__global__ void subtract_modulo_kernel(double* d_in1, double* d_in2, double* d_out, int size) {
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
-    if (idx < size*size) {
-        float diff = d_in1[idx] - d_in2[idx];
+    if (idx <= size*size) {
+        double diff = d_in1[idx] - d_in2[idx];
         if(diff<0)
           d_out[idx]=-diff;
         else
@@ -28,7 +28,7 @@ __global__ void subtract_modulo_kernel(float* d_in1, float* d_in2, float* d_out,
 
 int main(int argc, char** argv)
 {
-  float a=0;
+  double a=0;
   int s=0;
   int n=0;
   if(argv[1][1]=='h')
@@ -42,16 +42,16 @@ int main(int argc, char** argv)
     for(int k=1; k<argc; k+=2)
     {
       if(argv[k][1]=='a')
-        a=(float)atof(argv[k+1]);
+        a=(double)atof(argv[k+1]);
       else if(argv[k][1]=='s')
         s=atoi(argv[k+1]);
       else if(argv[k][1]=='n')
         n=atoi(argv[k+1]);
     }
 //Инициализация
-    float* setka = (float*)calloc(s*s,sizeof(float));
-    float* arr = (float*)calloc(s*s,sizeof(float));
-    float* arr2 = (float*)calloc(s*s,sizeof(float));
+    double* setka = (double*)calloc(s*s,sizeof(double));
+    double* arr = (double*)calloc(s*s,sizeof(double));
+    double* arr2 = (double*)calloc(s*s,sizeof(double));
 
     setka[0]=10;
     setka[s-1]=20;
@@ -65,12 +65,12 @@ int main(int argc, char** argv)
     arr2[s-1]=20;
     arr2[(s-1)*s]=20;
     arr2[s*s-1]=30;
-    float l1=(10);
-    l1/=s;
-    float l2=20;
-    l2/=s;
+    double l1=(10);
+    l1/=s-1;
+    double l2=20;
+    l2/=s-1;
     int iter=0;
-    float err=1;
+    double err=1;
     for(int i=1; i<s-1; i++)
     {
       setka[i]=setka[i-1]+l1;
@@ -94,35 +94,35 @@ int main(int argc, char** argv)
       }
     }
   //  cudaSetDevice(3);
-    float *cusetka;
-    float *cuarr;
-    float* cuarr2;
+    double *cusetka;
+    double *cuarr;
+    double* cuarr2;
     cudaError_t stat;
     cudaStream_t stream;
     void* d_temp_storage = NULL;
     size_t temp_storage_bytes = 0;
-    float* max_value;
+    double* max_value;
     //Выделение памяти на видеокарте
-    stat=cudaMalloc((void**)&cusetka, s*s*sizeof(float));
+    stat=cudaMalloc((void**)&cusetka, s*s*sizeof(double));
     if(stat!=cudaSuccess)printf("err 1: %d", stat);
-    stat=cudaMalloc((void**)&cuarr2, s*s*sizeof(float));
+    stat=cudaMalloc((void**)&cuarr2, s*s*sizeof(double));
     if(stat!=cudaSuccess)printf("err 2: %d", stat);
-    stat=cudaMalloc((void**)&cuarr, s*s*sizeof(float));
+    stat=cudaMalloc((void**)&cuarr, s*s*sizeof(double));
     if(stat!=cudaSuccess)printf("err 2: %d", stat);
-    stat=cudaMemcpy(cuarr2, arr2, s*s*sizeof(float), cudaMemcpyHostToDevice);
+    stat=cudaMemcpy(cuarr2, arr2, s*s*sizeof(double), cudaMemcpyHostToDevice);
     if(stat!=cudaSuccess)printf("err 3: %d", stat);
-    stat=cudaMemcpy(cusetka, setka, s*s*sizeof(float), cudaMemcpyHostToDevice);
+    stat=cudaMemcpy(cusetka, setka, s*s*sizeof(double), cudaMemcpyHostToDevice);
     if(stat!=cudaSuccess)printf("err 4: %d", stat);
-    stat=cudaMemcpy(cuarr, arr, s*s*sizeof(float), cudaMemcpyHostToDevice);
+    stat=cudaMemcpy(cuarr, arr, s*s*sizeof(double), cudaMemcpyHostToDevice);
     if(stat!=cudaSuccess)printf("err 5: %d", stat);
-    stat=cudaMalloc((void**)&max_value, sizeof(float));
+    stat=cudaMalloc((void**)&max_value, sizeof(double));
     if(stat!=cudaSuccess)printf("err 6: %d", stat);
     //Инициализация cub::DeviceReduce::Max
     stat=cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes, cuarr2, max_value, s*s);
     if(stat!=cudaSuccess)printf("err 7: %d", stat);
     stat=cudaMalloc(&d_temp_storage,temp_storage_bytes);
     if(stat!=cudaSuccess)printf("err 8: %d", stat);
-    float* max_value_h=(float*)malloc(sizeof(float));
+    double* max_value_h=(double*)malloc(sizeof(double));
     //Основной цикл
     while(err>a && iter<n)
     {
@@ -133,6 +133,9 @@ int main(int argc, char** argv)
       cudaGraph_t graph;
       cudaGraphExec_t instance;
 //Вычисление слоя
+//Количество потоеков в рамках потоковогоо блока должно быть не больше 1024 и кратно 32.
+//Найти количество блоков в сетке , исходя из количества потоков в сетке; исправить заполнение границ; добавить cudaGraph; замерить время внутри кода (библиотеки time).
+//Разобраться, почему выводится ноль в результате вычислений. Заменить double на double
       change<<<s, s, 0 >>>(cusetka, cuarr, s);
       if(iter%100==1)
       {
@@ -141,24 +144,24 @@ int main(int argc, char** argv)
 //Вычисление ошибки
         stat=cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes, cuarr2, max_value, s*s);
         if(stat!=cudaSuccess)printf("%d\n",stat);
-        cudaMemcpy(max_value_h,max_value,sizeof(float),cudaMemcpyDeviceToHost);
+        cudaMemcpy(max_value_h,max_value,sizeof(double),cudaMemcpyDeviceToHost);
         err=max_value_h[0];
-        printf("%d %f\n", iter, err);
+        printf("%d %.20f\n", iter, err);
       }
 //Копирование
-      float* dop;
+      double* dop;
       dop = cuarr;
       cuarr=cusetka;
       cusetka = dop;
     }
     //Возвращение данныз на хост
-    cudaMemcpy(setka,cusetka,s*s*sizeof(float),cudaMemcpyDeviceToHost);
-    cudaMemcpy(arr, cuarr, s*s*sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(setka,cusetka,s*s*sizeof(double),cudaMemcpyDeviceToHost);
+    cudaMemcpy(arr, cuarr, s*s*sizeof(double), cudaMemcpyDeviceToHost);
     free(max_value_h);
     cudaFree(d_temp_storage);
     cudaFree(cusetka);
     cudaFree(cuarr);
-    printf("Count iterations: %d\nError: %.10f\n", iter,err);
+    printf("Count iterations: %d\nError: %.50f\n", iter,err);
     if(s<16)
     {
       for(int i=0; i<s; i++)
