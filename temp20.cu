@@ -1,3 +1,4 @@
+#include <ctime>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -124,9 +125,9 @@ int main(int argc, char** argv)
     if(stat!=cudaSuccess)printf("err 8: %d", stat);
     double* max_value_h=(double*)malloc(sizeof(double));
     cudaGraph_t graph;
-    cudaGraphExec_t instance;
-    cudaStreamBeginCapture(stream,cudaStreamCaptureModeGlobal);
+//    cudaGraphExec_t instance;
     //Основной цикл
+	std::time_t result = std::time(nullptr);
     while(err>a && iter<n)
     {
       iter++;
@@ -137,7 +138,7 @@ int main(int argc, char** argv)
 //Количество потоеков в рамках потоковогоо блока должно быть не больше 1024 и кратно 32.
 //Найти количество блоков в сетке , исходя из количества потоков в сетке; исправить заполнение границ; добавить cudaGraph; замерить время внутри кода (библиотеки time).
 //Разобраться, почему выводится ноль в результате вычислений. Заменить double на double
-      change<<<s, s, 0 >>>(cusetka, cuarr, s);
+      change<<<s, s, 0>>>(cusetka, cuarr, s);
       if(iter%100==1)
       {
         //Вычисление слоя с ошибкой
@@ -155,7 +156,7 @@ int main(int argc, char** argv)
       cuarr=cusetka;
       cusetka = dop;
     }
-    cudaStreamEndCapture(stream,&graph);
+	result = std::time(nullptr) - result;
     //Возвращение данныз на хост
     cudaMemcpy(setka,cusetka,s*s*sizeof(double),cudaMemcpyDeviceToHost);
     cudaMemcpy(arr, cuarr, s*s*sizeof(double), cudaMemcpyDeviceToHost);
@@ -163,7 +164,7 @@ int main(int argc, char** argv)
     cudaFree(d_temp_storage);
     cudaFree(cusetka);
     cudaFree(cuarr);
-    printf("Count iterations: %d\nError: %.8f\n", iter,err);
+    printf("Count iterations: %d\nError: %.8f\nTime: %d\n", iter,err,result);
     if(s<16)
     {
       for(int i=0; i<s; i++)

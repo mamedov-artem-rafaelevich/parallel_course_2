@@ -1,7 +1,11 @@
-#include <math.h>
 #include <ctime>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <cub/cub.cuh>
+#include <cub/block/block_load.cuh>
+#include <cub/block/block_store.cuh>
+#include <cub/block/block_reduce.cuh>
 #define IDX2F(i,j,ld) (((j)-1)*(ld))+((i)-1)
 #define IDX2C(i,j,ld) (((j)*(ld))+(i))
 //Функция для вычисления теплопроводности по пятиточечному шаблону
@@ -96,6 +100,9 @@ int main(int argc, char** argv)
     double* cuarr2;
     cudaError_t stat;
     cudaStream_t stream;
+    void* d_temp_storage = NULL;
+    size_t temp_storage_bytes = 0;
+    double* max_value;
     //Выделение памяти на видеокарте
     stat=cudaMalloc((void**)&cusetka, s*s*sizeof(double));
     if(stat!=cudaSuccess)printf("err 1: %d", stat);
@@ -109,45 +116,64 @@ int main(int argc, char** argv)
     if(stat!=cudaSuccess)printf("err 4: %d", stat);
     stat=cudaMemcpy(cuarr, arr, s*s*sizeof(double), cudaMemcpyHostToDevice);
     if(stat!=cudaSuccess)printf("err 5: %d", stat);
-//    cudaGraph_t graph;
-//    cudaGraphExec_t instance;
+    stat=cudaMalloc((void**)&max_value, sizeof(double));
+    if(stat!=cudaSuccess)printf("err 6: %d", stat);
+    //Инициализация cub::DeviceReduce::Max
+    stat=cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes, cuarr2, max_value, s*s);
+    if(stat!=cudaSuccess)printf("err 7: %d", stat);
+    stat=cudaMalloc(&d_temp_storage,temp_storage_bytes);
+    if(stat!=cudaSuccess)printf("err 8: %d", stat);
+    double* max_value_h=(double*)malloc(sizeof(double));
+    cudaGraph_t graph;
+    cudaGraphExec_t instance;
+	bool graphCreated=false;
 //    cudaStreamBeginCapture(stream,cudaStreamCaptureModeGlobal);
     //Основной цикл
 	std::time_t result = std::time(nullptr);
     while(err>a && iter<n)
     {
-      iter++;
-      if(iter%100==1)
-        err=0;
-        //Этого должно хватить для вычисления массива.
-//Вычисление слоя
-//Количество потоеков в рамках потоковогоо блока должно быть не больше 1024 и кратно 32.
-//Найти количество блоков в сетке , исходя из количества потоков в сетке; исправить заполнение границ; добавить cudaGraph; замерить время внутри кода (библиотеки time).
-//Разобраться, почему выводится ноль в результате вычислений. Заменить double на double
-      change<<<s, s, 0 >>>(cusetka, cuarr, s);
-      if(iter%100==1)
-      {
-        //Вычисление слоя с ошибкой
-        subtract_modulo_kernel<<<s, s, 0>>>(cusetka, cuarr, cuarr2, s);
-//Вычисление ошибки
-        if(stat!=cudaSuccess)printf("%d\n",stat);
-        cudaMemcpy(arr2,cuarr2,sizeof(double)*s*s,cudaMemcpyDeviceToHost);
-        for(int i=0; i<s*s; i++)
-            if(arr2[i]>err)
-                err=arr2[i];
-        printf("%d %.6f\n", iter, err);
-      }
-//Копирование
-      double* dop;
-      dop = cuarr;
-      cuarr=cusetka;
-      cusetka = dop;
+		if(!graphCreated)
+		{
+			cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal);
+			  iter++;
+			  if(iter%100==1)
+				err=0;
+				//Этого должно хватить для вычисления массива.
+		//Вычисление слоя
+		//Количество потоеков в рамках потоковогоо блока должно быть не больше 1024 и кратно 32.
+		//Найти количество блоков в сетке , исходя из количества потоков в сетке; исправить заполнение границ; добавить cudaGraph; замерить время внутри кода (библиотеки time).
+		//Разобраться, почему выводится ноль в результате вычислений. Заменить double на double
+			  change<<<s, s, 0>>>(cusetka, cuarr, s);
+			  if(iter%100==1)
+			  {
+				//Вычисление слоя с ошибкой
+				subtract_modulo_kernel<<<s, s, 0>>>(cusetka, cuarr, cuarr2, s);
+		//Вычисление ошибки
+				stat=cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes, cuarr2, max_value, s*s);
+				if(stat!=cudaSuccess)printf("%d\n",stat);
+				cudaMemcpy(max_value_h,max_value,sizeof(double),cudaMemcpyDeviceToHost);
+				err=max_value_h[0];
+				printf("%d %.6f\n", iter, err);
+			  }
+		//Копирование
+			  double* dop;
+			  dop = cuarr;
+			  cuarr=cusetka;
+			  cusetka = dop;
+			  cudaStreamEndCapture(stream,&graph);
+			  cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
+			  graphCreated = true;
+		}
+		cudaGraphLaunch(instance, stream);
+		cudaStreamSynchronize(stream);
     }
 	result = std::time(nullptr) - result;
 //    cudaStreamEndCapture(stream,&graph);
     //Возвращение данныз на хост
     cudaMemcpy(setka,cusetka,s*s*sizeof(double),cudaMemcpyDeviceToHost);
     cudaMemcpy(arr, cuarr, s*s*sizeof(double), cudaMemcpyDeviceToHost);
+    free(max_value_h);
+    cudaFree(d_temp_storage);
     cudaFree(cusetka);
     cudaFree(cuarr);
     printf("Count iterations: %d\nError: %.8f\nTime: %d\n", iter,err,result);

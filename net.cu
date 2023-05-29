@@ -9,9 +9,9 @@
 class Linear
 {
     private:
-    float* array;
-    float* cuarray;
-    float* cuout;
+    double* array;
+    double* cuarray;
+    double* cuout;
     int w,h;
     public:
     Linear(){
@@ -23,15 +23,15 @@ class Linear
     };
     Linear(int a, int b)
     {
-        this->array = (float*)malloc(a*b*sizeof(float));
+        this->array = (double*)malloc(a*b*sizeof(double));
         this->h=a;
         this->w=b;
-        cudaMalloc(&this->cuout,this->w*sizeof(float));
+        cudaMalloc(&this->cuout,this->w*sizeof(double));
         for(int i=0; i<a; i++)
             for(int j=0; j<b; j++)
-                this->array[IDX2C(i,j,this->h)]=float(rand()%255);
-//        cudaMalloc(&cuarray,a*b*sizeof(float));
-        cudaMemcpy(this->cuarray,this->array,a*b*sizeof(float),cudaMemcpyHostToDevice);
+                this->array[IDX2C(i,j,this->h)]=double(rand()%255)/255;
+//        cudaMalloc(&cuarray,a*b*sizeof(double));
+        cudaMemcpy(this->cuarray,this->array,a*b*sizeof(double),cudaMemcpyHostToDevice);
     };
     Linear(const Linear& ln)
     {
@@ -58,35 +58,45 @@ class Linear
         return *this;
     };
 
-    void forward(float* arr)
+    void forward(double* arr)
     {
         cublasHandle_t handle;
         cublasCreate(&handle);
-        float* skal;
-        cudaMalloc(&skal,this->h*this->w*sizeof(float));
-        float* cuout;
-        cudaMalloc(&cuout,this->w*sizeof(float));
-        float dop[this->w*this->h];
+        double* skal;
+        cudaMalloc(&skal,this->h*this->w*sizeof(double));
+        double* cuout;
+        cudaMalloc(&cuout,this->w*sizeof(double));
+//		double dop2[this->w];
+//		cudaMemcpy(dop2,cuout,this->w*sizeof(double),cudaMemcpyDeviceToHost);
+//		for(int i=0; i<this->w; i++)
+//			printf("%d\n",dop2);
+        double dop[this->w*this->h];
         for(int i=0; i<this->h*this->w; i++)
             dop[i]=1;
-        cudaMemcpy(skal,dop,this->w*this->h*sizeof(float),cudaMemcpyHostToDevice);
+		double dop3[this->w];
+		for(int i=0; i<this->w; i++)
+			dop3[i]=1;
+		double* skal2;
+		cudaMalloc(&skal2,this->w*sizeof(double));
+		cudaMemcpy(skal2,dop3,this->w*sizeof(double),cudaMemcpyHostToDevice);
+        cudaMemcpy(skal,dop,this->w*this->h*sizeof(double),cudaMemcpyHostToDevice);
         printf("start fc\n");
-        cublasSgemm(handle,CUBLAS_OP_N,CUBLAS_OP_N,this->h,this->w,1,skal,arr,this->h,this->cuarray,this->w,skal,cuout,this->w);
+        cublasDgemv(handle,CUBLAS_OP_T,this->h,this->w,skal,arr,1,this->cuarray,1,skal2,cuout,1);
         printf("cublas\n");
         cudaFree(arr);
-        cudaMalloc(&arr,this->w*sizeof(float));
+        cudaMalloc(&arr,this->w*sizeof(double));
         std::swap(arr,cuout);
         cublasDestroy(handle);
         cudaFree(cuout);
     };
 };
 
-__device__ float sigma(float a)
+__device__ double sigma(double a)
 {
     return (1/(1-exp(-a)));
 }
 
-__global__ void sigmoid(float* arr,int n)
+__global__ void sigmoid(double* arr,int n)
 {
 //    int i=blockIdx.x*blockDim.x+threadIdx.x;
 //    int j=blockIdx.y*blockDim.y+threadIdx.y;
@@ -106,43 +116,52 @@ class Net
         this->fc3=Linear(4*4,1);
     };
 
-    void forward(float* arr)
+    void forward(double* arr)
     {
-        float arr1[32*32];
-        cudaMemcpy(arr1,arr,32*32,cudaMemcpyDeviceToHost);
+        double arr1[32*32];
+        cudaMemcpy(arr1,arr,32*32*sizeof(double),cudaMemcpyDeviceToHost);
         for(int i=0; i<32; i++)
             printf("%f\n",arr1[i]);
         this->fc1.forward(arr);
         printf("first fc\n");
         sigmoid<<<16,16>>>(arr,16);
+		double arr2[16*16];
+		cudaMemcpy(arr2,arr,16*16*sizeof(double),cudaMemcpyDeviceToHost);
         for(int i=0; i<16; i++)
-            printf("%f\n",arr[i]);
+            printf("%f\n",arr2[i]);
         this->fc1.forward(arr);
         sigmoid<<<4,4>>>(arr,4);
+		double arr3[4*4];
+		cudaMemcpy(arr3,arr,4*4*sizeof(double),cudaMemcpyDeviceToHost);
         for(int i=0; i<4; i++)
-            printf("%f\n",arr[i]);
+            printf("%f\n",arr3[i]);
         this->fc1.forward(arr);
         sigmoid<<<1,1>>>(arr,1);
-        printf("%f\n",arr[0]);
+		double arr0;
+		cudaMemcpy(&arr0,arr,sizeof(double),cudaMemcpyDeviceToHost);
+        printf("%f\n",arr0);
     };
 };
 
 int main()
 {
-    float* array = (float*)malloc(32*32*sizeof(float));
+    double* array = (double*)malloc(32*32*sizeof(double));
     for(int i=0; i<32*32; i++)
-        array[i]=float(rand()%255)/255;
-    float* cuarr;
-    cudaMalloc(&cuarr,32*32);
+	{
+        array[i]=(double(rand()%255))/255;
+		std::cout << array[i] << '\n';
+	}
+    double* cuarr;
+    cudaMalloc(&cuarr,32*32*sizeof(double));
     cudaMemcpy(cuarr,array,32*32,cudaMemcpyHostToDevice);
     printf("cuda first\n");
     Net net;
     printf("init net\n");
     net.forward(cuarr);
     free(array);
-    array=(float*)malloc(sizeof(float));
-    cudaMemcpy(array,cuarr,1,cudaMemcpyDeviceToHost);
-//    std::cout << array[0];
+    array=(double*)malloc(sizeof(double));
+    cudaMemcpy(array,cuarr,sizeof(double),cudaMemcpyDeviceToHost);
+//    std::cout << array[0] << '\n';
     cudaFree(cuarr);
     printf("%f\n",array[0]);
     free(array);
