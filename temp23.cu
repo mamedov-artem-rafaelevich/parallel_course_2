@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <cub/cub.cuh>
+#include <cuda_runtime.h>
 #include <cub/block/block_load.cuh>
 #include <cub/block/block_store.cuh>
 #include <cub/block/block_reduce.cuh>
@@ -12,12 +13,16 @@
 __global__ void change(double* setka, double* arr, int s)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
+	int j = blockDim.y * blockIdx.y + threadIdx.y;
+	i=IDX2C(i,j,s);
 	if (i > s && i%s != 0 && i < s*(s - 1)-1 && i%s != s - 1)
 		setka[i] = 0.25 * (arr[i-1] + arr[i+1] + arr[i+s] + arr[i-s]);
 }
 //Функция для вычисления разницы между итерациями
 __global__ void subtract_modulo_kernel(double* d_in1, double* d_in2, double* d_out, int size) {
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
+	int jdx = blockDim.x * blockIdx.x + threadIdx.x;
+	idx = IDX2C(idx,jdx,size);
     if (idx <= size*size) {
         double diff = d_in1[idx] - d_in2[idx];
         if(diff<0)
@@ -130,42 +135,47 @@ int main(int argc, char** argv)
 //    cudaStreamBeginCapture(stream,cudaStreamCaptureModeGlobal);
     //Основной цикл
 	std::time_t result = std::time(nullptr);
+	dim3 blockDim = dim3(32, 32);
+    dim3 gridDim = dim3((s + blockDim.x - 1) / blockDim.x, (s + blockDim.y - 1) / blockDim.y);
     while(err>a && iter<n)
     {
+		  iter++;
+		  if(iter%100==1)
+			err=0;
+			//Этого должно хватить для вычисления массива.
+	//Вычисление слоя
+	//Количество потоеков в рамках потоковогоо блока должно быть не больше 1024 и кратно 32.
+	//Найти количество блоков в сетке , исходя из количества потоков в сетке; исправить заполнение границ; добавить cudaGraph; замерить время внутри кода (библиотеки time).
+	//Разобраться, почему выводится ноль в результате вычислений. Заменить double на double
 		if(!graphCreated)
 		{
-			cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal);
-			  iter++;
-			  if(iter%100==1)
-				err=0;
-				//Этого должно хватить для вычисления массива.
-		//Вычисление слоя
-		//Количество потоеков в рамках потоковогоо блока должно быть не больше 1024 и кратно 32.
-		//Найти количество блоков в сетке , исходя из количества потоков в сетке; исправить заполнение границ; добавить cudaGraph; замерить время внутри кода (библиотеки time).
-		//Разобраться, почему выводится ноль в результате вычислений. Заменить double на double
-			  change<<<s, s, 0>>>(cusetka, cuarr, s);
-			  if(iter%100==1)
-			  {
-				//Вычисление слоя с ошибкой
-				subtract_modulo_kernel<<<s, s, 0>>>(cusetka, cuarr, cuarr2, s);
-		//Вычисление ошибки
-				stat=cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes, cuarr2, max_value, s*s);
-				if(stat!=cudaSuccess)printf("%d\n",stat);
-				cudaMemcpy(max_value_h,max_value,sizeof(double),cudaMemcpyDeviceToHost);
-				err=max_value_h[0];
-				printf("%d %.6f\n", iter, err);
-			  }
-		//Копирование
-			  double* dop;
-			  dop = cuarr;
-			  cuarr=cusetka;
-			  cusetka = dop;
-			  cudaStreamEndCapture(stream,&graph);
-			  cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
-			  graphCreated = true;
+		  cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal);
+		  for(int i=0; i<100; i++)
+			change<<<gridDim, blockDim, 0, stream>>>(cusetka, cuarr, s);
+			change<<<gridDim, blockDim, 0>>>(cusetka, cuarr, s);
+		  cudaStreamEndCapture(stream,&graph);
+		  cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
+		  graphCreated = true;
+		  cudaGraphLaunch(instance, stream);
 		}
 		cudaGraphLaunch(instance, stream);
 		cudaStreamSynchronize(stream);
+		  if(iter%100==1)
+		  {
+			//Вычисление слоя с ошибкой
+			subtract_modulo_kernel<<<gridDim, blockDim, 0>>>(cusetka, cuarr, cuarr2, s);
+	//Вычисление ошибки
+			stat=cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes, cuarr2, max_value, s*s, stream);
+			if(stat!=cudaSuccess)printf("%d\n",stat);
+			cudaMemcpy(max_value_h,max_value,sizeof(double),cudaMemcpyDeviceToHost);
+			err=max_value_h[0];
+			printf("%d %.6f\n", iter, err);
+		  }
+	//Копирование
+		  double* dop;
+		  dop = cuarr;
+		  cuarr=cusetka;
+		  cusetka = dop;
     }
 	result = std::time(nullptr) - result;
 //    cudaStreamEndCapture(stream,&graph);
@@ -176,6 +186,8 @@ int main(int argc, char** argv)
     cudaFree(d_temp_storage);
     cudaFree(cusetka);
     cudaFree(cuarr);
+	cudaStreamDestroy(stream);
+	cudaGraphDestroy(graph);
     printf("Count iterations: %d\nError: %.8f\nTime: %d\n", iter,err,result);
     if(s<16)
     {
