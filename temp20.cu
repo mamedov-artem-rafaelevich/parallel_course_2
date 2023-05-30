@@ -138,11 +138,17 @@ int main(int argc, char** argv)
 //Количество потоеков в рамках потоковогоо блока должно быть не больше 1024 и кратно 32.
 //Найти количество блоков в сетке , исходя из количества потоков в сетке; исправить заполнение границ; добавить cudaGraph; замерить время внутри кода (библиотеки time).
 //Разобраться, почему выводится ноль в результате вычислений. Заменить double на double
-      change<<<s, s, 0>>>(cusetka, cuarr, s);
+	  if(s>32 || s%32==0)
+		  change<<<s, s, 0>>>(cusetka, cuarr, s);
+	  else
+		  change<<<s, s+1, 0>>>(cusetka, cuarr, s);
       if(iter%100==1)
       {
         //Вычисление слоя с ошибкой
-        subtract_modulo_kernel<<<s, s, 0>>>(cusetka, cuarr, cuarr2, s);
+		if(s>32 || s%32==0)
+			subtract_modulo_kernel<<<s, s, 0>>>(cusetka, cuarr, cuarr2, s);
+		else
+			subtract_modulo_kernel<<<s, s+1, 0>>>(cusetka, cuarr, cuarr2, s);
 //Вычисление ошибки
         stat=cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes, cuarr2, max_value, s*s);
         if(stat!=cudaSuccess)printf("%d\n",stat);
