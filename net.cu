@@ -66,11 +66,11 @@ class Linear
         cudaMalloc(&cuout,this->w*sizeof(double));
 //		double dop2[this->w];
 //		cudaMemcpy(dop2,cuout,this->w*sizeof(double),cudaMemcpyDeviceToHost);
-//		for(int i=0; i<this->w; i++)
-//			printf("%d\n",dop2);
+//		for(int i=0; i<this->h; i++)
+//			printf("%d\n",this->cuarray[i]);
 		double skal=1;
         printf("start fc\n");
-        cublasDgemv(handle,CUBLAS_OP_T,this->h,this->w,&skal,arr,1,this->cuarray,1,&skal,cuout,1);
+        cublasDgemv(handle,CUBLAS_OP_T,this->w,this->h,&skal,arr,1,this->cuarray,1,&skal,cuout,1);
         printf("cublas\n");
         cudaFree(arr);
         cudaMalloc(&arr,this->w*sizeof(double));
@@ -129,6 +129,7 @@ class Net
 		double arr0;
 		cudaMemcpy(&arr0,arr,sizeof(double),cudaMemcpyDeviceToHost);
         printf("%f\n",arr0);
+		printf("end forward net\n");
     };
 };
 
@@ -152,7 +153,7 @@ int main()
     cudaMemcpy(array,cuarr,sizeof(double),cudaMemcpyDeviceToHost);
 //    std::cout << array[0] << '\n';
     cudaFree(cuarr);
-    printf("%f\n",array[0]);
-    free(array);
+    printf("%f\n",array);
+//    free(array);
     return 0;
 }
