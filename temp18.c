@@ -2,8 +2,8 @@
 #include <math.h>
 #include <openacc.h>
 #include <stdlib.h>
-#include <nvToolsExt.h>
-#include <cuda_runtime.h>
+//#include <nvToolsExt.h>
+//#include <cuda_runtime.h>
 #include "/opt/nvidia/hpc_sdk/Linux_x86_64/22.11/math_libs/11.0/targets/x86_64-linux/include/cublas_v2.h"
 #define IDX2F(i,j,ld) (((j)-1)*(ld))+((i)-1)
 #define IDX2C(i,j,ld) (((j)*(ld))+(i))
@@ -106,11 +106,11 @@ int main(int argc, char** argv)
 			status=cublasSaxpy(handle,s*s,&alpha,setka,1,arr,1);
 			status=cublasIsamax(handle,s*s,arr,1,&nm);
 			err=arr[nm];
+			#pragma acc update host(err) async(1)
+			#pragma acc wait(1) 
 			if(iter%100==0 || iter==1)
 			{
 //Обновление ошибки на хосте
-			#pragma acc update host(err) async(1)
-			#pragma acc wait(1) 
 				printf("%d %f \n",iter, err);
 			}
 		}

@@ -95,6 +95,7 @@ int main(int argc, char** argv)
 					err=fmax(err,fabs(arr[IDX2C(i,j,s)]-setka[IDX2C(i,j,s)]));
 				}
 			}
+			for()
 			float* dop;
 			dop = arr;
 			arr=setka;

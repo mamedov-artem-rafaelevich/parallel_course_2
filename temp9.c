@@ -857,7 +857,7 @@ int main(int argc, char** argv)
 //			#pragma acc wait(1)
 				printf("%d %f \n",iter, err);
 			}
-			#pragma acc kernels
+/*			#pragma acc kernels
 {
 				printf("%f \n", err);
 			for(int i=0; i<s; i++)
@@ -866,7 +866,7 @@ int main(int argc, char** argv)
 					printf("%f ",arr[i+s*j]);
 				printf("\n");
 			}
-}
+}*/
 		}
 		printf("Count iterations: %d\nError: %.10f\n", iter,err);
 //�������� ������ � GPU
@@ -884,3 +884,4 @@ int main(int argc, char** argv)
 	return 0;
 }
 
+//

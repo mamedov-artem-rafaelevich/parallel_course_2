@@ -42,7 +42,7 @@ int main(int argc, char** argv)
 			setka[s*(s-1)+i]+=setka[s*(s-1)+i]+l1;
 		}
 		int iter=0;
-		float err=0;
+		float err=1;
 #pragma acc data copyin(setka[0:s*s]) create(arr[0:s*s]) copy(s,iter,err,a,n)
 		while(err>a && iter<n)
 		{

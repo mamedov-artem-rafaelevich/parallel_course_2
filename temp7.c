@@ -30,10 +30,20 @@ int main(int argc, char** argv)
 		setka[s-1]=20;
 		setka[(s-1)*s]=30;
 		setka[s*s-1]=20;
+		float l1=(10);
+		l1/=s;
+		float l2=20;
+		l2/=s;
+		for(int i=1; i<s-1; i++)
+		{
+			setka[i]=setka[i-1]+l1;
+			setka[i*s]+=setka[(i-1)*s]+l2;
+			setka[s-1+i*s]+=setka[s-1+(i-1)*s]+l1;
+			setka[s*(s-1)+i]+=setka[s*(s-1)+i]+l1;
+		}
 		int iter=0;
 		float err=0;
-#pragma acc data copyin(setka[0:s*s]) create(arr[0:s*s]) copy(s,iter,err)
-		nvtxRangePushA("while loop");
+#pragma acc data copyin(setka[0:s*s]) create(arr[0:s*s]) copy(s,iter,err,a,n)
 		while(err>a && iter<n)
 		{
 			iter++;
@@ -42,18 +52,25 @@ int main(int argc, char** argv)
 			{
 				arr[i]=setka[i];
 			}
-#pragma acc parallel loop
+#pragma acc kernels 
+{
 			for(int i=1; i<s-1; i++)
+			{
 				for(int j=1; j<s-1; j++)
 				{
+//#pragma acc atomic update
 					setka[i+j*(s-1)]=0.25*(arr[i+1+j*(s-1)]+arr[i-1+j*(s-1)]+arr[i+(j-1)*(s-1)]+arr[i+(j+1)*(s-1)]);
 					if(err<arr[i+j*(s-1)])
+					{
+//#pragma acc atomic update
 						err=setka[i+j*(s-1)]-arr[i+j*(s-1)];
+					}
 				}
+			}
+}
 			if(iter%100==0 || iter==1)
 				printf("%d %f \n",iter, err);
 		}
-		nvtxRangePop();
 #pragma acc exit data delete(arr[:s*s]) delete (setka[:s*s])
 	free(setka);
 	}

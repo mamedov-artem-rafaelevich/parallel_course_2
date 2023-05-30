@@ -42,7 +42,7 @@ int main(int argc, char** argv)
 			setka[s*(s-1)+i]+=setka[s*(s-1)+i]+l1;
 		}
 		int iter=0;
-		float err=0;
+		float err=1;
 //#pragma acc data copyin(setka[0:s*s]) create(arr[0:s*s]) copy(s,iter,err,a,n)
 		while(err>a && iter<n)
 		{
@@ -63,7 +63,7 @@ int main(int argc, char** argv)
 					if(err<arr[i+j*(s-1)])
 					{
 //#pragma acc atomic update
-						err=setka[i+j*(s-1)]-arr[i+j*(s-1)];
+						err=arr[i+j*(s-1)]-setka[i+j*(s-1)];
 					}
 				}
 			}
@@ -71,6 +71,7 @@ int main(int argc, char** argv)
 			if(iter%100==0 || iter==1)
 				printf("%d %f \n",iter, err);
 		}
+		printf("Iterations: %d\n", iter);
 //#pragma acc exit data delete(arr[:s*s]) delete (setka[:s*s])
 	free(setka);
 	}

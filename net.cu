@@ -62,26 +62,15 @@ class Linear
     {
         cublasHandle_t handle;
         cublasCreate(&handle);
-        double* skal;
-        cudaMalloc(&skal,this->h*this->w*sizeof(double));
         double* cuout;
         cudaMalloc(&cuout,this->w*sizeof(double));
 //		double dop2[this->w];
 //		cudaMemcpy(dop2,cuout,this->w*sizeof(double),cudaMemcpyDeviceToHost);
 //		for(int i=0; i<this->w; i++)
 //			printf("%d\n",dop2);
-        double dop[this->w*this->h];
-        for(int i=0; i<this->h*this->w; i++)
-            dop[i]=1;
-		double dop3[this->w];
-		for(int i=0; i<this->w; i++)
-			dop3[i]=1;
-		double* skal2;
-		cudaMalloc(&skal2,this->w*sizeof(double));
-		cudaMemcpy(skal2,dop3,this->w*sizeof(double),cudaMemcpyHostToDevice);
-        cudaMemcpy(skal,dop,this->w*this->h*sizeof(double),cudaMemcpyHostToDevice);
+		double skal=1;
         printf("start fc\n");
-        cublasDgemv(handle,CUBLAS_OP_T,this->h,this->w,skal,arr,1,this->cuarray,1,skal2,cuout,1);
+        cublasDgemv(handle,CUBLAS_OP_T,this->h,this->w,&skal,arr,1,this->cuarray,1,&skal,cuout,1);
         printf("cublas\n");
         cudaFree(arr);
         cudaMalloc(&arr,this->w*sizeof(double));

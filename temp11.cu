@@ -13,17 +13,17 @@ __device__ void change(float* setka, float* arr, int i, int j, int s)
 	setka[IDX2C(i+threadIdx.x,j+threadIdx.y,s)]=0.25*(arr[IDX2C(i+threadIdx.x,j-1+threadIdx.y,s)]+arr[IDX2C(i+threadIdx.x,j+1+threadIdx.y,s)]+arr[IDX2C(i-1+threadIdx.x,j+threadIdx.y,s)]+arr[IDX2C(i+1+threadIdx.x,j+threadIdx.y,s)]);
 }
 
-__device__ void init(int s, int i, float l1, float l2)
+/*_device__ void init(int s, int i, float l1, float l2)
 {
 	setka[i]=setka[i-1]+l1;
 	setka[i*s]+=setka[(i-1)*s]+l2;
 	setka[s-1+i*s]+=setka[s-1+(i-1)*s]+l1;
 	setka[s*(s-1)+i]+=setka[s*(s-1)+i]+l1;
-}
+}*/
 
 __device__ void deliter(float* setka, float* arr, float* err, int i)
 {
-	err[IDX2C(i+thread.x)]=setka[IDX2C(i+thread.x)]-arr[IDX2C(i+thread.x)];
+	err[i+threadIdx.x]=setka[i+threadIdx.x]-arr[i+threadIdx.x];
 }
 
 int main(int argc, char** argv)
@@ -65,11 +65,11 @@ int main(int argc, char** argv)
 		l2/=s;
 		for(int i=1; i<s-1; i+=32)
 		{
-			init<<<2,5>>>(s,i,l1,l2);
-/*			setka[i]=setka[i-1]+l1;
+//			init<<<2,5>>>(s,i,l1,l2);
+			setka[i]=setka[i-1]+l1;
 			setka[i*s]+=setka[(i-1)*s]+l2;
 			setka[s-1+i*s]+=setka[s-1+(i-1)*s]+l1;
-			setka[s*(s-1)+i]+=setka[s*(s-1)+i]+l1;*/
+			setka[s*(s-1)+i]+=setka[s*(s-1)+i]+l1;
 		}
 		cudaDeviceSynchronize();
 		int iter=0;
@@ -102,6 +102,7 @@ int main(int argc, char** argv)
 		}
 		cudaFree(arr);
 		cudaFree(setka);
+		cudaFree(errors);
 		cublasDestroy(handle);
 //		cublasShutdown();
 		printf("Count iterations: %d", iter);
