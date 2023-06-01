@@ -82,9 +82,9 @@ class Linear
 //	for(int i=0; i<4; i++)
 //		printf("%f\n",dop2[i]);
 	float skal=1;
-        printf("start fc\n");
-	cublasStatus_t stat;
-        stat=cublasSgemv(handle,CUBLAS_OP_N,this->w,this->h,&skal,this->cuarray,this->w,arr,1,&skal,cuout,1);
+//        printf("start fc\n");
+//	cublasStatus_t stat;
+        cublasSgemv(handle,CUBLAS_OP_N,this->w,this->h,&skal,this->cuarray,this->w,arr,1,&skal,cuout,1);
 //        printf("%d\n",stat);
         cudaFree(arr);
         cudaMalloc(&arr,this->w*sizeof(float));
@@ -114,7 +114,7 @@ class Net
     
     Net()
     {
-        printf("init\n");
+//        printf("init\n");
 	this->fc1.initLinear(32*32,16*16);
 	this->fc2.initLinear(16*16,4*4);
 	this->fc3.initLinear(4*4,1);
@@ -130,27 +130,27 @@ class Net
 //	for(int i=0; i<32; i++)
 //		std::cout << arr1[i] << "\n";
         this->fc1.forward(arr);
-       	cudaMemcpy(arr1,arr,32*32*sizeof(float),cudaMemcpyDeviceToHost);
-	for(int i=0; i<32; i++)
-		std::cout << arr1[i] << "\n";
+//       	cudaMemcpy(arr1,arr,32*32*sizeof(float),cudaMemcpyDeviceToHost);
+//	for(int i=0; i<32; i++)
+//		std::cout << arr1[i] << "\n";
 //        printf("first fc---------------------------------------------------------\n");
         sigmoid<<<16,16>>>(arr,16);
-	float arr2[16*16];
-	cudaMemcpy(arr2,arr,16*16*sizeof(float),cudaMemcpyDeviceToHost);
-        for(int i=0; i<16; i++)
-            printf("%f\n",arr2[i]);
+//	float arr2[16*16];
+//	cudaMemcpy(arr2,arr,16*16*sizeof(float),cudaMemcpyDeviceToHost);
+//        for(int i=0; i<16; i++)
+//            printf("%f\n",arr2[i]);
         this->fc2.forward(arr);
         sigmoid<<<4,4>>>(arr,4);
-	float arr3[4*4];
-	cudaMemcpy(arr3,arr,4*4*sizeof(float),cudaMemcpyDeviceToHost);
-        for(int i=0; i<4; i++)
-            printf("%f\n",arr3[i]);
+//	float arr3[4*4];
+//	cudaMemcpy(arr3,arr,4*4*sizeof(float),cudaMemcpyDeviceToHost);
+//        for(int i=0; i<4; i++)
+//            printf("%f\n",arr3[i]);
         this->fc3.forward(arr);
         sigmoid<<<1,1>>>(arr,1);
 	float arr0;
-	cudaMemcpy(&arr0,arr,sizeof(float),cudaMemcpyDeviceToHost);
-        printf("%f\n",arr0);
-	printf("end forward net\n");
+//	cudaMemcpy(&arr0,arr,sizeof(float),cudaMemcpyDeviceToHost);
+//        printf("%f\n",arr0);
+//	printf("end forward net\n");
     };
 };
 
@@ -169,9 +169,9 @@ int main()
     float* cuarr;
     cudaMalloc(&cuarr,32*32*sizeof(float));
     cudaMemcpy(cuarr,array,32*32,cudaMemcpyHostToDevice);
-    printf("cuda first\n");
+//    printf("cuda first\n");
     Net net;
-    printf("init net\n");
+//    printf("init net\n");
     net.forward(cuarr);
     free(array);
     array=(float*)malloc(sizeof(float));
