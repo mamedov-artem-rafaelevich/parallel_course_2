@@ -125,7 +125,7 @@ int main(int argc, char** argv)
     stat=cudaMalloc((void**)&max_value, sizeof(double));
     if(stat!=cudaSuccess)printf("err 6: %d", stat);
     //Инициализация cub::DeviceReduce::Max
-    stat=cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes, cuarr2, max_value, s*s);
+    stat=cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes, cuarr2, max_value, s*s,stream);
     if(stat!=cudaSuccess)printf("err 7: %d", stat);
     stat=cudaMalloc(&d_temp_storage,temp_storage_bytes);
     if(stat!=cudaSuccess)printf("err 8: %d", stat);
@@ -142,6 +142,10 @@ int main(int argc, char** argv)
     {
 		if(!graphCreated)
 		{
+			for(int j=0; j<102; j++)
+			{
+		  cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal);
+		
 		  iter++;
 		  if(iter%100==1)
 			err=0;
@@ -152,24 +156,24 @@ int main(int argc, char** argv)
 	//Разобраться, почему выводится ноль в результате вычислений. Заменить double на double
 //		if(!graphCreated)
 //		{
-		  cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal);
 		  for(int i=0; i<100; i++)
-			change<<<gridDim, blockDim, 0>>>(cusetka, cuarr, s);
-			change<<<gridDim, blockDim, 0>>>(cusetka, cuarr, s);
+			change<<<gridDim, blockDim, 0, stream>>>(cusetka, cuarr, s);
+			change<<<gridDim, blockDim, 0, stream>>>(cusetka, cuarr, s);
 //		  graphCreated = true;
 //		  cudaGraphLaunch(instance, stream);
 //		}
 //		cudaGraphLaunch(instance, stream);
-		  if(iter%100==1)
-		  {
+		  
 			//Вычисление слоя с ошибкой
 			subtract_modulo_kernel<<<gridDim, blockDim, 0>>>(cusetka, cuarr, cuarr2, s);
 			subtract_modulo_kernel<<<gridDim, blockDim, 0>>>(cusetka, cuarr, cuarr2, s);
 	//Вычисление ошибки
-			stat=cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes, cuarr2, max_value, s*s);
+			stat=cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes, cuarr2, max_value, s*s,stream);
 			if(stat!=cudaSuccess)printf("%d\n",stat);
 			cudaMemcpy(max_value_h,max_value,sizeof(double),cudaMemcpyDeviceToHost);
 			err=max_value_h[0];
+			if(iter%100==1)
+		  {
 			printf("%d %.6f\n", iter, err);
 		  }
 	//Копирование
@@ -180,6 +184,7 @@ int main(int argc, char** argv)
 		  graphCreated=true;
 		  cudaStreamEndCapture(stream,&graph);
 		  cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
+		}
 		}
 		cudaGraphLaunch(instance,stream);
 		cudaStreamSynchronize(stream);
