@@ -14,6 +14,7 @@ class Linear
     double* cuarray;
     int w,h;
     public:
+//Инициализация
     Linear(){
         this->w=0;
         this->h=0;
@@ -62,7 +63,7 @@ class Linear
         cudaMalloc(&this->cuarray,a*b*sizeof(double));
         cudaMemcpy(this->cuarray,this->array,a*b*sizeof(double),cudaMemcpyHostToDevice);
     };
-
+//Прямой проход (умножение на матрицу)
     void forward(double* arr)
     {
         cublasHandle_t handle;
@@ -83,7 +84,7 @@ __device__ double sigma(double a)
 {
     return (1/(1-exp(-a)));
 }
-
+//Параллельный вызов сигмоиды
 __global__ void sigmoid(double* arr,int n)
 {
     if(IDX2C(threadIdx.x,blockIdx.x,n)<n*n)
@@ -94,14 +95,14 @@ class Net
 {
     public:
     Linear fc1,fc2,fc3;
-    
+//Инициализация
     Net()
     {
         this->fc1.initLinear(32*32,16*16);
         this->fc2.initLinear(16*16,4*4);
         this->fc3.initLinear(4*4,1);
     };
-
+//Прямой проход: полносвязный линейный слой и сигмоида в качестве функции активации
     void forward(double* arr)
     {
         double arr1[32*32];
@@ -119,13 +120,16 @@ class Net
 
 int main()
 {
+//Замер времени
     std::time_t result = std::time(nullptr);
     double* array = (double*)malloc(32*32*sizeof(double));
     float arrf[32*32];
+//Чтение входных данных из файла (сгенерировано случайно)
     FILE* fl;
     fl = fopen("start.bin","rb");
     fread(arrf,sizeof(double),32*32,fl);
     fclose(fl);
+//Преобразование типов
     for(int i=0; i<32*32; i++)
     {
         array[i]=(double(arrf[i]));
@@ -133,11 +137,14 @@ int main()
     double* cuarr;
     cudaMalloc(&cuarr,32*32*sizeof(double));
     cudaMemcpy(cuarr,array,32*32,cudaMemcpyHostToDevice);
+//Инициализация нейронной сети
     Net net;
+//Прямой проход нейронной сети
     net.forward(cuarr);
     free(array);
     array=(double*)malloc(sizeof(double));
     cudaMemcpy(array,cuarr,sizeof(double),cudaMemcpyDeviceToHost);
+//Освобождение ресурсов
     cudaFree(cuarr);
     printf("Result: %f\n",array[0]);
     free(array);
