@@ -1,4 +1,5 @@
 #include <ctime>
+#include <cmath>
 #include <math.h>
 #include <cuda.h>
 #include "cublas_v2.h"
@@ -59,7 +60,7 @@ class Linear
         fread(arrf,sizeof(float),a*b,fl);
         fclose(fl);
         for(int i=0; i<a*b; i++)
-            this->array[i]=(double)arrf[i];
+            this->array[i]=(double(arrf[i]));//(double)arrf[i];
         cudaMalloc(&this->cuarray,a*b*sizeof(double));
         cudaMemcpy(this->cuarray,this->array,a*b*sizeof(double),cudaMemcpyHostToDevice);
     };
@@ -80,9 +81,9 @@ class Linear
     };
 };
 //Сигмоида
-__device__ double sigma(double a)
+__device__ double sigma(double x)
 {
-    return (1/(1-exp(-a)));
+    return 1 / (1 + std::exp(-x));
 }
 //Параллельный вызов сигмоиды
 __global__ void sigmoid(double* arr,int n)
@@ -107,14 +108,27 @@ class Net
     {
         double arr1[32*32];
         cudaMemcpy(arr1,arr,32*32*sizeof(double),cudaMemcpyDeviceToHost);
+        //printf("first layer\n");
         this->fc1.forward(arr);
         double arr2[16*16];
         cudaMemcpy(arr2,arr,16*16*sizeof(double),cudaMemcpyDeviceToHost);
-        sigmoid<<<16,16>>>(arr,16);
+        //for(int i=0; i<16; i++)
+            //printf("%f\n",arr2[i]);
+        sigmoid<<<16,32>>>(arr,16);
+        //printf("second layer\n");
         this->fc2.forward(arr);
-        sigmoid<<<4,4>>>(arr,4);
+        cudaMemcpy(arr2,arr,4*4*sizeof(double),cudaMemcpyDeviceToHost);
+        //for(int i=0; i<16; i++)
+            //printf("%f\n",arr2[i]);
+        sigmoid<<<4,32>>>(arr,4);
+        //printf("third layer\n");
         this->fc3.forward(arr);
-        sigmoid<<<1,1>>>(arr,1);
+        cudaMemcpy(arr2,arr,sizeof(double),cudaMemcpyDeviceToHost);
+        //for(int i=0; i<1; i++)
+            //printf("%f\n",arr2[i]);
+        arr2[0]=1/(1-exp(-arr2[0]));
+//        //printf("%f",arr2[0]);
+        sigmoid<<<1,32>>>(arr,1);
     };
 };
 
@@ -123,17 +137,18 @@ int main()
 //Замер времени
     std::time_t result = std::time(nullptr);
     double* array = (double*)malloc(32*32*sizeof(double));
-    float arrf[32*32];
+//    float arrf[32*32];
 //Чтение входных данных из файла (сгенерировано случайно)
     FILE* fl;
     fl = fopen("start.bin","rb");
-    fread(arrf,sizeof(double),32*32,fl);
+    fread(array,sizeof(double),32*32,fl);
     fclose(fl);
 //Преобразование типов
-    for(int i=0; i<32*32; i++)
-    {
-        array[i]=(double(arrf[i]));
-    }
+//     for(int i=0; i<32*32; i++)
+//     {
+// //        array[i]=(std::round(array[i]*1e6)/1e6);
+//         array[i]=double(arrf[i]);
+//     }
     double* cuarr;
     cudaMalloc(&cuarr,32*32*sizeof(double));
     cudaMemcpy(cuarr,array,32*32,cudaMemcpyHostToDevice);
@@ -146,7 +161,7 @@ int main()
     cudaMemcpy(array,cuarr,sizeof(double),cudaMemcpyDeviceToHost);
 //Освобождение ресурсов
     cudaFree(cuarr);
-    printf("Result: %f\n",array[0]);
+    printf("Result: %.4f\n",array[0]-0.2765);
     free(array);
     printf("Time: %d\n",std::time(nullptr) - result);
     return 0;
